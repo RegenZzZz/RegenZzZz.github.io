@@ -353,6 +353,24 @@ footer .right{margin-left:auto;text-align:right;font-size:12.5px;color:#a0885c;l
 .imp-fab:hover{opacity:1;transform:translateY(-2px);box-shadow:0 6px 18px -8px rgba(0,0,0,.6)}
 .imp-fab-export{opacity:.95;width:42px;height:42px;font-size:16px;background:var(--cinnabar);border-color:var(--cinnabar2);color:#fff6e2}
 .imp-fab-export:hover{background:var(--cinnabar2)}
+/* ===== 保存密钥弹窗 ===== */
+.savemodal{position:fixed;inset:0;background:rgba(20,14,6,.78);z-index:200;display:none;align-items:center;justify-content:center;padding:18px;}
+.savemodal.open{display:flex;animation:fade .2s ease;}
+.savemodal-card{background:var(--card);border:1.5px solid var(--gold);border-radius:12px;width:360px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.55);padding:22px 24px 20px;position:relative;}
+.savemodal-card .sm-head{font-family:var(--font-brush);font-size:24px;color:var(--ink);letter-spacing:.06em;display:flex;align-items:center;gap:9px;margin-bottom:6px;}
+.savemodal-card .sm-head::before{content:"";width:8px;height:8px;background:var(--cinnabar);transform:rotate(45deg);display:inline-block;}
+.savemodal-card .sm-sub{font-size:13px;color:var(--ink3);margin-bottom:14px;}
+.savemodal-card input[type=password]{width:100%;border:1.5px solid var(--line);border-radius:8px;background:var(--free);padding:11px 13px;font-family:var(--font-serif);font-size:16px;color:var(--ink);outline:none;letter-spacing:.1em;}
+.savemodal-card input[type=password]:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,137,59,.15);}
+.savemodal-card .sm-err{min-height:18px;font-size:12.5px;color:var(--cinnabar);margin-top:7px;}
+.savemodal-card .sm-actions{display:flex;gap:10px;margin-top:10px;}
+.savemodal-card .sm-actions button{flex:1;border-radius:8px;padding:10px 0;font-size:15px;font-family:var(--font-brush);letter-spacing:.08em;cursor:pointer;}
+.sm-cancel{background:var(--card2);border:1.5px solid var(--line);color:var(--ink2);}
+.sm-cancel:hover{border-color:var(--gold);}
+.sm-confirm{background:var(--cinnabar);border:1.5px solid var(--cinnabar2);color:#fff6e2;}
+.sm-confirm:hover{background:var(--cinnabar2);}
+.savemodal-card.shake{animation:smShake .3s;}
+@keyframes smShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .imp-panel{
   display:none;position:absolute;left:0;bottom:44px;width:308px;
   background:var(--card);border:1.5px solid var(--gold);border-radius:10px;
@@ -587,6 +605,20 @@ footer .right{margin-left:auto;text-align:right;font-size:12.5px;color:#a0885c;l
   <button class="imp-fab imp-fab-export" id="impExportFab" title="导出自带数据 HTML（数据+图片全部内嵌）">存</button>
   <button class="imp-fab" id="impFab" title="数据导入">导</button>
   <button class="imp-fab" id="impImgFab" title="图片导入">图</button>
+</div>
+
+<!-- 保存密钥弹窗 -->
+<div class="savemodal" id="saveModal">
+  <div class="savemodal-card" id="saveModalCard">
+    <div class="sm-head">保存验证</div>
+    <div class="sm-sub">请输入保存密钥，验证通过后方可导出</div>
+    <input type="password" id="savePwd" placeholder="请输入密钥" autocomplete="off">
+    <div class="sm-err" id="saveErr"></div>
+    <div class="sm-actions">
+      <button class="sm-cancel" id="saveCancel">取消</button>
+      <button class="sm-confirm" id="saveConfirm">确认保存</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -2007,9 +2039,47 @@ function exportSelfContained(){
     alert('导出失败：' + (e && e.message ? e.message : e));
   }
 }
+/* ==================== 保存密钥验证 ==================== */
+const SAVE_KEY = 'Zhangzhen0853';
+function openSaveGate(){
+  const m = document.getElementById('saveModal');
+  const card = document.getElementById('saveModalCard');
+  const inp = document.getElementById('savePwd');
+  const err = document.getElementById('saveErr');
+  if(m) m.classList.add('open');
+  if(card) card.classList.remove('shake');
+  if(err) err.textContent = '';
+  if(inp){ inp.value = ''; setTimeout(function(){ inp.focus(); }, 30); }
+}
+function closeSaveGate(){
+  const m = document.getElementById('saveModal');
+  if(m) m.classList.remove('open');
+}
+function confirmSave(){
+  const inp = document.getElementById('savePwd');
+  const err = document.getElementById('saveErr');
+  const card = document.getElementById('saveModalCard');
+  const val = inp ? inp.value : '';
+  if(val === SAVE_KEY){
+    closeSaveGate();
+    exportSelfContained();
+  }else{
+    if(err) err.textContent = '密钥错误，请重新输入';
+    if(card){ card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); }
+    if(inp){ inp.value = ''; inp.focus(); }
+  }
+}
 (function(){
   const b = document.getElementById('impExportFab');
-  if(b) b.addEventListener('click', exportSelfContained);
+  if(b) b.addEventListener('click', openSaveGate);
+  const confirm = document.getElementById('saveConfirm');
+  if(confirm) confirm.addEventListener('click', confirmSave);
+  const cancel = document.getElementById('saveCancel');
+  if(cancel) cancel.addEventListener('click', closeSaveGate);
+  const inp = document.getElementById('savePwd');
+  if(inp) inp.addEventListener('keydown', function(e){ if(e.key === 'Enter') confirmSave(); });
+  const m = document.getElementById('saveModal');
+  if(m) m.addEventListener('click', function(e){ if(e.target === m) closeSaveGate(); });
 })();
 
 /* 启动时恢复本机已保存的导入数据 */
